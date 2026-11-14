@@ -17,7 +17,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       KACHE_CACHE_DIR: ${{ github.workspace }}/.kache
-      KACHE_RUNTIME_DIR: ${{ runner.temp }}/kache-runtime
+      KACHE_RUNTIME_DIR: ${{ github.workspace }}/.kache-runtime
       CARGO_HOME: ${{ github.workspace }}/.cargo
       KACHE_LOCAL_ONLY: "1"
     steps:
