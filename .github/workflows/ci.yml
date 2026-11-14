@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, platform: linux-64 }
+          - { os: macos-latest, platform: osx-arm64 }
+    name: Build (${{ matrix.platform }})
+    runs-on: ${{ matrix.os }}
+    env:
+      KACHE_CACHE_DIR: ${{ github.workspace }}/.kache
+      KACHE_RUNTIME_DIR: ${{ runner.temp }}/kache-runtime
+      CARGO_HOME: ${{ github.workspace }}/.cargo
+      KACHE_LOCAL_ONLY: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Pixi
+        uses: prefix-dev/setup-pixi@9936258fee697aff89b3fed6ca1f80a382ef694e # v0.11.3
+        with:
+          run-install: false
+
+      - name: Prepare cache directories
+        run: mkdir -p .kache .cargo
+
+      - name: Restore kache store
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .kache
+          key: kache-1.2.2-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: |
+            kache-1.2.2-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Restore cargo registry
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .cargo
+          key: cargo-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: |
+            cargo-${{ runner.os }}-
+
+      - name: Cold build
+        shell: bash
+        run: |
+          for var in $(compgen -e | grep '^SCCACHE' || true); do unset "$var"; done
+          pixi build --clean -o dist
+
+      - name: Warm build
+        shell: bash
+        run: |
+          for var in $(compgen -e | grep '^SCCACHE' || true); do unset "$var"; done
+          # Keep the store but drop the cold build's events so the report
+          # reflects only the warm build.
+          rm -rf "$KACHE_RUNTIME_DIR"
+          pixi build --clean -o dist
+
+      - name: Cache report
+        if: always()
+        shell: bash
+        run: |
+          pixi run -e dev kache stats --last-build --full --json | tee kache-stats.json || true
+          if [ -f kache-stats.json ]; then
+            {
+              echo "### kache stats (${{ matrix.platform }})"
+              echo '```json'
+              cat kache-stats.json
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi

@@ -1,0 +1,56 @@
+[workspace]
+channels = ["https://prefix.dev/conda-forge"]
+platforms = ["osx-arm64", "linux-64"]
+preview = ["pixi-build"]
+
+[workspace.build-variants]
+rust_compiler_version = ["1.95.0"]
+
+[workspace.dependencies]
+kache = "==1.2.2"
+pixi-build-rust = ">=0.5.7,<0.6"
+rust = "~=1.95.0"
+
+# ----------- #
+# Environment #
+# ----------- #
+
+[feature.compilers.dependencies]
+rust = { workspace = true }
+
+[feature.cache.dependencies]
+kache = { workspace = true }
+
+[feature.cache.tasks]
+build = { cmd = "bash scripts/build.sh", description = "Clean build through pixi build + kache" }
+demo = { cmd = "bash scripts/demo.sh", description = "Cold and warm build, then print kache stats" }
+
+# dev: local cargo/rust plus kache so the tasks can show cache statistics
+[environments.dev]
+features = ["compilers", "cache"]
+
+# -------- #
+# Package  #
+# -------- #
+
+[package]
+name = "hello-kache"
+version = "0.1.0"
+license = "MIT"
+description = "Tiny Rust CLI demonstrating pixi build with kache compilation caching"
+
+[package.build-dependencies]
+kache = { workspace = true }
+
+[package.build]
+backend = { name = "pixi-build-rust", workspace = true }
+# The build runs in an isolated environment: HOME/PWD point at
+# .pixi/bld/<pkg>/<key>/work, so cache locations must be passed in explicitly.
+# Set these variables in the parent process before running `pixi build`.
+secrets = ["KACHE_CACHE_DIR", "KACHE_RUNTIME_DIR", "CARGO_HOME"]
+
+[package.build.config]
+extra-args = ["--profile", "release"]
+# `pixi-build-rust` only injects RUSTC_WRAPPER="sccache" when an SCCACHE* env
+# var is present; with none, this kache wrapper survives. See README.
+env = { RUSTC_WRAPPER = "kache", KACHE_LOCAL_ONLY = "1" }

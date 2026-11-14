@@ -1,0 +1,6 @@
+/.pixi/
+/target/
+/dist/
+/.kache/
+/.kache-runtime/
+/.cargo/

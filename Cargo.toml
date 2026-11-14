@@ -1,0 +1,10 @@
+[package]
+name = "hello-kache"
+version = "0.1.0"
+edition = "2021"
+description = "Tiny Rust CLI demonstrating pixi build with kache compilation caching"
+license = "MIT"
+
+[dependencies]
+anyhow = "1"
+clap = "4"
