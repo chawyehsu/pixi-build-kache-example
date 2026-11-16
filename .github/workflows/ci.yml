@@ -67,12 +67,5 @@ jobs:
         if: always()
         shell: bash
         run: |
-          pixi run -e dev kache stats --last-build --full --json | tee kache-stats.json || true
-          if [ -f kache-stats.json ]; then
-            {
-              echo "### kache stats (${{ matrix.platform }})"
-              echo '```json'
-              cat kache-stats.json
-              echo '```'
-            } >> "$GITHUB_STEP_SUMMARY"
-          fi
+          pixi run -e dev kache stats
+          pixi run -e dev kache stats --since 24h --format github >> "$GITHUB_STEP_SUMMARY"
